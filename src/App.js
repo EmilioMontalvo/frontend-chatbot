@@ -1,14 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
 import useWebSocket from 'react-use-websocket';
-
-
+import './App.css'; // Asegúrate de tener el archivo CSS adecuado
 
 const App = () => {
   const [socketUrl] = useState(process.env.REACT_APP_SOCKET_URL);
   const [messageHistory, setMessageHistory] = useState([]);
   const [input, setInput] = useState('');
   const [isSending, setIsSending] = useState(false);
-  const [isTyping, setIsTyping] = useState(false); // Nuevo estado para controlar el efecto de escritura
+  const [isTyping, setIsTyping] = useState(false);
   const { sendMessage, lastMessage } = useWebSocket(socketUrl);
 
   const botMessageBuffer = useRef("");
@@ -19,13 +18,21 @@ const App = () => {
 
       if (newContent.includes('<1230TextEnd1971>')) {
         const completeMessage = botMessageBuffer.current + newContent.replace('<1230TextEnd1971>', '').trim();
-        setMessageHistory((prev) => [
-          ...prev,
-          { type: 'bot', text: completeMessage },
-        ]);
+        if (completeMessage) {
+          setMessageHistory((prev) => {
+            const newMessages = [...prev];
+            // Remove the last incomplete message if it exists
+            if (newMessages.length && newMessages[newMessages.length - 1].type === 'bot') {
+              newMessages.pop();
+            }
+            // Add the complete message
+            newMessages.push({ type: 'bot', text: completeMessage });
+            return newMessages;
+          });
+        }
         botMessageBuffer.current = "";
         setIsSending(false);
-        setIsTyping(false); // Detener el efecto de escritura cuando se recibe el mensaje completo
+        setIsTyping(false);
       } else {
         botMessageBuffer.current += newContent;
         setMessageHistory((prev) => {
@@ -37,7 +44,7 @@ const App = () => {
           }
           return newMessages;
         });
-        setIsTyping(true); // Iniciar el efecto de escritura cuando se recibe parte del mensaje
+        setIsTyping(true);
       }
     }
   }, [lastMessage]);
@@ -52,31 +59,39 @@ const App = () => {
   };
 
   return (
-    <div style={{ maxWidth: '600px', margin: '50px auto', fontFamily: 'Arial, sans-serif' }}>
-      <div id="messages" style={{ border: '1px solid #ccc', padding: '10px', height: '300px', overflowY: 'scroll' }}>
+    <div className="app-container">
+      <div className="header">
+        <h1>Lango</h1>
+      </div>
+      <div id="messages" className="message-container">
         {messageHistory.map((msg, index) => (
-          <div key={index} className={`message ${msg.type}`} style={{ color: msg.type === 'user' ? 'blue' : 'green' }}>
+          <div key={index} className={`message ${msg.type}`}>
             {msg.type === 'user' ? 'User: ' : 'Bot: '}
-            {msg.type === 'bot' && isTyping ? (
-              <span>{msg.text}<span className="typing-indicator">...</span></span>
+            {msg.type === 'bot' ? (
+              <span>{msg.text}{isTyping && index === messageHistory.length - 1 && <span className="typing-indicator">...</span>}</span>
             ) : (
               <span>{msg.text}</span>
             )}
           </div>
         ))}
       </div>
-      <input 
-        type="text" 
-        value={input} 
-        onChange={(e) => setInput(e.target.value)} 
-        onKeyPress={(e) => e.key === 'Enter' ? handleSend() : null} 
-        placeholder="Type your message here..." 
-        style={{ width: 'calc(100% - 100px)', marginRight: '10px' }} 
-        disabled={isSending}
-      />
-      <button onClick={handleSend} style={{ width: '90px' }} disabled={isSending}>Send</button>
+      <div className="input-container">
+        <input 
+          type="text" 
+          value={input} 
+          onChange={(e) => setInput(e.target.value)} 
+          onKeyPress={(e) => e.key === 'Enter' ? handleSend() : null} 
+          placeholder="Type your message here..." 
+          className="input-field"
+          disabled={isSending}
+        />
+        <button onClick={handleSend} className="send-button" disabled={isSending}>Send</button>
+      </div>
     </div>
   );
 };
 
 export default App;
+
+
+
